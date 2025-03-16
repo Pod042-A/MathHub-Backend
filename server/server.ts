@@ -1,6 +1,6 @@
-import express, { Express, Request, Response } from "express"
-import cors from "cors"
-import dotenv from "dotenv"
+import express, { Express, Request, Response } from 'express'
+import cors from 'cors'
+import dotenv from 'dotenv'
 
 import questRoutes from './routes/quest_routes.js'
 

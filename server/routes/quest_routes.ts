@@ -47,7 +47,6 @@ router.get('/answerQuest/:questId', async (req: Request<{ questId: string }, {},
         const questId: string = req.params.questId
         const user_answer: string = req.query.answer
         const result = await pool.query('SELECT ANSWER FROM QUEST WHERE ID = $1', [questId])
-
         const quest_answer: { "answer": string } = result.rows[0]
         if (user_answer === quest_answer.answer) {
             res.status(200).send('正確')

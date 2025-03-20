@@ -28,7 +28,7 @@ router.get('/getList', async (req, res) => {
 router.get('/getQuest/:questId', async (req, res) => {
     try {
         const questId = req.params.questId;
-        const result = await db_js_1.pool.query('SELECT ID, TITLE, QUESTION, TAGS FROM QUEST WHERE ID = $1', [questId]);
+        const result = await db_js_1.pool.query('SELECT TITLE, QUESTION FROM QUEST WHERE ID = $1', [questId]);
         res.status(200).json(result.rows[0]);
     }
     catch (error) {

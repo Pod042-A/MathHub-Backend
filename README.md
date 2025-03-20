@@ -6,6 +6,6 @@
   
 ## 聯繫方式/Contact Info:  
 Discord: IaintHamburger  
-MathHub Discord Server: [Project MathHub](https://discord.gg/YnJ3dBq7fa)
+MathHub Discord Server: [Project MathHub](https://discord.gg/YnJ3dBq7fa)  
 Instagram: legitbaga  
 Telegram: @KK_Hambaga  

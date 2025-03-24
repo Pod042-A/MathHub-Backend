@@ -8,4 +8,4 @@
 Discord: IaintHamburger  
 Discord Server: [Project MathHub](https://discord.gg/YnJ3dBq7fa)  
 Instagram: legitbaga  
-Telegram: @KK_Hambaga  
+Telegram: @IaintHamburger  

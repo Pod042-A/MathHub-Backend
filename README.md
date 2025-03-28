@@ -8,12 +8,6 @@
 可參閱[貢獻指南](/CONTRIBUTING.md)  
   
 ## 聯繫方式/Contact Info:  
-<<<<<<< HEAD
-Discord: IaintHamburger  
-Discord Server: [Project MathHub](https://discord.gg/YnJ3dBq7fa)  
-Instagram: legitbaga  
-Telegram: @IaintHamburger  
-=======
 - Discord: IaintHamburger  
 - Discord Server: [Project MathHub](https://discord.gg/YnJ3dBq7fa)  
 - Instagram: legitbaga  
@@ -21,4 +15,3 @@ Telegram: @IaintHamburger
 - Email:
     - kkliu487@gmail.com
     - mathhubtw@gmail.com
->>>>>>> 38ad4f9 (docs: update content)

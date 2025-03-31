@@ -1,12 +1,18 @@
-# React + Vite
+# MathHub 數學題庫練習網站
+## 主旨在於讓各位高中生練習數學，取得自己理想的成績！
+網站中包含各類數學競賽/大考題/常見題型，以及完整的詳解，目的在於讓大家練習各種解題技巧！   
+如果想幫我們開發網站，或是發現任何bug，歡迎聯絡IaintHamburger，或提交issue/PR/MR來幫助我們變得更好！   
+(網站仍處於開發階段中，如果有興趣的話歡迎聯繫我！）  
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript and enable type-aware lint rules. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 貢獻方式  
+可參閱[貢獻指南](/CONTRIBUTING.md)  
+（這邊是前端，別跑錯地方囉！）    
+  
+## 聯繫方式/Contact Info:  
+- Discord: IaintHamburger  
+- Discord Server: [Project MathHub](https://discord.gg/YnJ3dBq7fa)  
+- Instagram: legitbaga  
+- Telegram: @IaintHamburger  
+- Email:
+    - kkliu487@gmail.com
+    - mathhubtw@gmail.com

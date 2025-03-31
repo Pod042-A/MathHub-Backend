@@ -8,8 +8,11 @@
     "start": "node ./build/server.js",
     "compile": "npx tsc --build",
     "watch": "npx tsc --watch",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint": "biome lint",
+    "lint:fix": "biome lint --fix",
+    "format": "biome format",
+    "format:check": "biome format --check",
+    "format:fix": "biome format --fix"
   },
   "keywords": [],
   "author": "",
@@ -30,7 +33,6 @@
     "@types/express": "^5.0.0",
     "@types/node": "^22.13.10",
     "@types/pg": "^8.11.11",
-    "eslint": "^9.22.0",
     "typescript": "^5.8.2"
   }
 }

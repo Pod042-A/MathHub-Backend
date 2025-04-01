@@ -6,7 +6,8 @@
 
 ## 貢獻方式  
 可參閱[貢獻指南](/CONTRIBUTING.md)  
-  
+（這邊是後端，別跑錯地方囉！）  
+
 ## 聯繫方式/Contact Info:  
 - Discord: IaintHamburger  
 - Discord Server: [Project MathHub](https://discord.gg/YnJ3dBq7fa)  

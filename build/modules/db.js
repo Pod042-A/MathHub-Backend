@@ -14,7 +14,7 @@ exports.pool = new pg_1.Pool({
     user: node_process_1.default.env.DB_USERNAME,
     host: node_process_1.default.env.DB_HOSTNAME,
     database: node_process_1.default.env.DB_NAME,
-    password: '',
+    password: node_process_1.default.env.DB_PASSWORD,
     port: parseInt(node_process_1.default.env.DB_PORT || '5432'),
     max: parseInt(node_process_1.default.env.DB_MAX_CONNECT || '10'),
     idleTimeoutMillis: parseInt(node_process_1.default.env.DB_IDLE_TIMEOUT || '60000'),

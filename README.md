@@ -16,3 +16,6 @@
 - Email:
     - kkliu487@gmail.com
     - mathhubtw@gmail.com
+
+## 授權
+此專案程式碼採用 MIT 授權。詳細內容請查閱[LICENSE.md](/LICENSE.md)。

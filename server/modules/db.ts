@@ -1,6 +1,6 @@
 import * as dotenv from 'dotenv'
 import { Pool } from 'pg'
-import * as process from 'node:process'
+import process from 'node:process'
 import { EventEmitter } from 'node:events'
 
 dotenv.config()

@@ -6,16 +6,20 @@
 
 ## 貢獻方式  
 可參閱[貢獻指南](/CONTRIBUTING.md)  
-（這邊是後端，別跑錯地方囉！）  
+(這邊是後端，別跑錯地方囉！) 
 
 ## 聯繫方式/Contact Info:  
-- Discord: IaintHamburger  
+- Discord:  
+    - IaintHamburger  
+    - project_mathhub  
 - Discord Server: [Project MathHub](https://discord.gg/YnJ3dBq7fa)  
-- Instagram: legitbaga  
+- Instagram/Threads:
+    - legitbaga  
+    - project_mathhub  
 - Telegram: @IaintHamburger  
-- Email:
-    - kkliu487@gmail.com
-    - mathhubtw@gmail.com
+- Email:  
+    - kkliu487@gmail.com  
+    - mathhubtw@gmail.com  
 
 ## 授權
 此專案程式碼採用 MIT 授權。詳細內容請查閱[LICENSE.md](/LICENSE.md)。

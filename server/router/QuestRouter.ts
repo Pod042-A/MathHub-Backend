@@ -1,275 +1,366 @@
 import express, { type Router, type Request, type Response } from "express";
-import { authenticationTokenValidation } from "../middleware/AuthenticationTokenValidation.js";
 import { HTTPError } from "../modules/Error/HTTPError/index.js";
 import { HTTP_RESPONSE_STATUS_CODE } from "../modules/Constant/HTTPResponseStatusCode/index.js";
 import type { QueryResult } from "pg";
-import { POOL } from "../modules/Database/PostgreSQL.js";
-import type { RequestBody, RequestWithAuthenticationToken } from "../types/Request/type.js";
-import IsolatedVM from "isolated-vm";
-import type { QuestData } from "../types/Question/QuestData.js";
-import { QuestionVariable, QuestionVariableType } from "../types/Question/QuestionVariable.js";
-import { Answer, AnswerType } from "../types/Answer/Answer.js";
+import type { RequestBody, RequestQuery, RequestWithAccessToken } from "../modules/types/Request/type.js";
 import { asyncRouterErrorHandler } from "../handler/AsyncRouterErrorHandler.js";
-import { Question, QuestionType } from "../types/Question/Question.js";
+import format from "pg-format";
+import { QuestInput, type APIObject as QuestInputAPIObject } from "../modules/Quest/QuestInput.js";
+import { QuestOutput } from "../modules/Quest/QuestOutput.js";
+import {
+    AnswerVariable,
+    type APIObject as AnswerVariableAPIObject,
+} from "../modules/Quest/AnswerVariable.js";
+import { Database } from "../modules/Database/PostgreSQL/MathHubMainDatabase/index.js";
+import { accessTokenValidation } from "../middleware/AccessTokenValidation.js";
+import { type JoinCondition, Query } from "../modules/Database/PostgreSQL/Query.js";
+import type { Column } from "../modules/Database/PostgreSQL/MathHubMainDatabase/type.js";
 
-export const ROUTER: Router = express.Router();
+const ROUTER: Router = express.Router();
+
+ROUTER.post(
+    "/",
+    accessTokenValidation([Database.schemas.user.tables.userPrivileges.columns.allowCreateQuest.name]),
+    asyncRouterErrorHandler(
+        async (req: RequestWithAccessToken<RequestBody<QuestInputAPIObject>>, res: Response) => {
+            const QUEST_INPUT: QuestInput = new QuestInput(req.body);
+
+            const POOL = Database.pool;
+            const schemaQuest = Database.schemas.quest;
+            const tableData = schemaQuest.tables.data;
+
+            const CLIENT = await POOL.connect();
+
+            try {
+                await CLIENT.query("BEGIN");
+
+                const ENTRIES = Array.from(
+                    new Map<string, unknown>([
+                        [tableData.columns.content.name, QUEST_INPUT.content],
+                        [tableData.columns.imageURL.name, QUEST_INPUT.imageURL],
+                        [tableData.columns.solution.name, QUEST_INPUT.solution],
+                        [
+                            tableData.columns.questionVariable.name,
+                            JSON.stringify(QUEST_INPUT.questionVariable),
+                        ],
+                        [tableData.columns.difficulty.name, QUEST_INPUT.difficulty],
+                        [tableData.columns.status.name, QUEST_INPUT.status],
+                    ]),
+                ).filter((entry) => {
+                    if (typeof entry[1] === "string") {
+                        return entry[1].trim().length > 0;
+                    }
+                    return entry[1] !== null;
+                });
+                let argsIndex = 5;
+                const COLUMN: string = ENTRIES.map((entry) => format.ident(entry[0])).join(", ");
+                const ARGS: string = ENTRIES.map(() => `$${argsIndex++}`).join(", ");
+
+                const RESULT: QueryResult = await CLIENT.query(
+                    format(
+                        `INSERT INTO %I.%I (%I, %I, %I, %I%s)
+						VALUES ($1, $2, $3, $4%s) RETURNING %I`,
+                        schemaQuest.name,
+                        tableData.name,
+                        tableData.columns.code.name,
+                        tableData.columns.title.name,
+                        tableData.columns.answerVariable.name,
+                        tableData.columns.authorID.name,
+                        COLUMN.trim().length > 0 ? `, ${COLUMN}` : "",
+                        ARGS.trim().length > 0 ? `, ${ARGS}` : "",
+                        tableData.columns.id.name,
+                    ),
+                    [
+                        QUEST_INPUT.code,
+                        QUEST_INPUT.title,
+                        JSON.stringify(QUEST_INPUT.answerVariable),
+                        req.accessToken.payloadEntity.sub,
+                        ...ENTRIES.map((entry) => entry[1]),
+                    ],
+                );
+
+                if (QUEST_INPUT.tags.length > 0) {
+                    const tableQuestTags = schemaQuest.tables.questTags;
+                    const QUEST_ID: string = RESULT.rows[0][tableData.columns.id.name];
+
+                    await CLIENT.query(
+                        format(
+                            "INSERT INTO %I.%I (%I, %I) VALUES %L",
+                            schemaQuest.name,
+                            tableQuestTags.name,
+                            tableQuestTags.columns.quest.name,
+                            tableQuestTags.columns.tag.name,
+                            QUEST_INPUT.tags.map((value) => [QUEST_ID, value]),
+                        ),
+                    );
+                }
+
+                await CLIENT.query("COMMIT");
+
+                res.status(HTTP_RESPONSE_STATUS_CODE.successfulResponse.created).json({
+                    message: "操作成功",
+                    data: {},
+                });
+                return;
+            } catch (error) {
+                await CLIENT.query("ROLLBACK");
+                throw error;
+            } finally {
+                CLIENT.release();
+            }
+        },
+    ),
+);
 
 /**
  * 取得題目列表
  */
-ROUTER.post(
-	"/getList",
-	authenticationTokenValidation(1),
-	asyncRouterErrorHandler(async (req: RequestBody<{ begin: number; end: number }>, res: Response) => {
-		/**
-		 * 查詢題目資料
-		 */
-		const { begin: QUERY_RANGE_BEGIN, end: QUERY_RANGE_END } = req.body;
+// FIXME: Query Tags
+ROUTER.get(
+    "/",
+    accessTokenValidation([Database.schemas.user.tables.userPrivileges.columns.allowGetQuestData.name]),
+    asyncRouterErrorHandler(async (req: RequestQuery<{ q: string }>, res: Response) => {
+        // 查詢題目資料
+        const PARAMS = JSON.parse(decodeURIComponent(req.query.q));
 
-		if (
-			Number.isNaN(QUERY_RANGE_BEGIN) ||
-			Number.isNaN(QUERY_RANGE_END) ||
-			QUERY_RANGE_END < QUERY_RANGE_BEGIN
-		) {
-			throw new HTTPError(
-				HTTP_RESPONSE_STATUS_CODE.clientErrorResponse.badRequest,
-				"Invalid query range.",
-			);
-		}
+        const POOL = Database.pool;
 
-		const RESULT: QueryResult = await POOL.query(
-			`
-            SELECT q.id, q.title, q.publish_time, COALESCE(a.nickname, a.username) AS publisher_name
-            FROM test_schema.quest q
-            JOIN test_schema.auth a ON q.publisher_id = a.id
-            WHERE q.status = 1
-            ORDER BY publish_time
-            LIMIT $1 OFFSET $2`,
-			[Math.max(QUERY_RANGE_END - QUERY_RANGE_BEGIN + 1, 1), Math.max(QUERY_RANGE_BEGIN, 0)],
-		);
+        const schemaQuest = Database.schemas.quest;
+        const tableQuestData = schemaQuest.tables.data;
+        const schemaQuestAlias = "q";
 
-		res.status(HTTP_RESPONSE_STATUS_CODE.successfulResponse.ok).json(RESULT.rows);
-		return;
-	}),
+        const schemaUser = Database.schemas.user;
+        const tableUserData = schemaUser.tables.data;
+        const schemaUserAlias = "u";
+
+        const joins: JoinCondition[] = [
+            {
+                type: "INNER",
+                schema: schemaUser,
+                table: tableUserData,
+                origin: { alias: schemaQuestAlias, key: tableQuestData.columns.authorID },
+                reference: { alias: schemaUserAlias, key: tableUserData.columns.id },
+            },
+        ];
+        const requires: (Column & { alias: string })[] = [
+            { ...tableUserData.columns.id, alias: schemaUserAlias },
+            { ...tableUserData.columns.username, alias: schemaUserAlias },
+            { ...tableUserData.columns.email, alias: schemaUserAlias },
+        ];
+
+        const QUERY: Query = new Query(
+            schemaQuest,
+            tableQuestData,
+            schemaQuestAlias,
+            Object.values(tableQuestData.columns),
+            PARAMS,
+            joins,
+            requires,
+        );
+
+        const RESULT: QueryResult = await POOL.query(QUERY.toSQL());
+        if (RESULT.rowCount === null) {
+            throw new HTTPError(
+                HTTP_RESPONSE_STATUS_CODE.serverErrorResponse.internalServerError,
+                "Unknown database query error",
+            );
+        }
+
+        const data = Array.from(RESULT.rows).map((row) => {
+            const author: Map<string, unknown> = new Map();
+            const obj: Map<string, unknown> = new Map();
+
+            for (const require of QUERY.requires ?? []) {
+                const COLUMN_NAME = `${require.alias}_${require.name}`;
+                let value = row[COLUMN_NAME];
+
+                // biome-ignore lint/nursery/noMagicNumbers: Data type ID of Timestamp
+                if (RESULT.fields.find((field) => field.name === COLUMN_NAME)?.dataTypeID === 1114) {
+                    value = new Date(value).getTime();
+                }
+
+                if (require.alias === schemaUserAlias) {
+                    author.set(require.name, value);
+                }
+                if (require.alias === schemaQuestAlias) {
+                    obj.set(require.name, value);
+                }
+            }
+
+            for (const column of QUERY.columns) {
+                const COLUMN_NAME = `${QUERY.alias}_${column}`;
+                let value = row[COLUMN_NAME];
+
+                // biome-ignore lint/nursery/noMagicNumbers: Data type ID of Timestamp
+                if (RESULT.fields.find((field) => field.name === COLUMN_NAME)?.dataTypeID === 1114) {
+                    value = new Date(value).getTime();
+                }
+
+                obj.set(column, value);
+            }
+
+            obj.set("author", Object.fromEntries(author));
+            return Object.fromEntries(obj);
+        });
+
+        res.status(HTTP_RESPONSE_STATUS_CODE.successfulResponse.ok).json({
+            message: "操作成功",
+            data,
+        });
+        return;
+    }),
 );
 
 /**
  * 取得題目資料
  */
-ROUTER.post(
-	"/getQuest",
-	authenticationTokenValidation(1),
-	asyncRouterErrorHandler(async (req: RequestBody<{ questID: string }>, res: Response) => {
-		/**
-		 * 建立虛擬機
-		 */
-		const ISOLATE: IsolatedVM.Isolate = new IsolatedVM.Isolate({ memoryLimit: 128 });
+/*
+ROUTER.get(
+    "/:id",
+    accessTokenValidation([Database.schemas.user.tables.userPrivileges.columns.allowGetQuestData.name]),
+    asyncRouterErrorHandler(async (req: Request, res: Response) => {
+        // 查詢題目內容
+        const QUEST_ID: string = req.params.id;
 
-		try {
-			/**
-			 * 查詢題目內容
-			 */
-			const QUEST_ID: string = req.body.questID;
-			const RESULT: QueryResult = await POOL.query(
-				`
-            SELECT code, title, question, question_var FROM test_schema.quest
-            WHERE id = $1 AND status = 1`,
-				[QUEST_ID],
-			);
+        const POOL = Database.pool;
+        const schemaUser = Database.schemas.user;
+        const tableUserData = schemaUser.tables.data;
+        const schemaQuest = Database.schemas.quest;
+        const tableQuestData = schemaQuest.tables.data;
+        const tableQuestTags = schemaQuest.tables.questTags;
 
-			if (RESULT.rowCount === 0) {
-				throw new HTTPError(HTTP_RESPONSE_STATUS_CODE.clientErrorResponse.notFound);
-			}
+        // LABEL: query author data
+        const RESULT: QueryResult = await POOL.query(
+            format(
+                `SELECT q.*,  COALESCE(qt.tags, ARRAY[]::smallint[]) AS "tags"
+                FROM %I.%I q
+                JOIN %I.%I u ON q.%I = u.%I
+                LEFT JOIN LATERAL (
+                    SELECT ARRAY_AGG(qt.%I) AS tags
+                    FROM %I.%I qt
+                    WHERE qt.%I = q.%I
+                ) qt ON TRUE
+                WHERE q.%I = $1`,
+                "",
+                schemaQuest.name,
+                tableQuestData.name,
+                schemaUser.name,
+                tableUserData.name,
+                tableQuestData.columns.authorID.name,
+                tableUserData.columns.id.name,
+                tableQuestTags.columns.tag.name,
+                schemaQuest.name,
+                tableQuestTags.name,
+                tableQuestTags.columns.quest.name,
+                tableQuestData.columns.id.name,
+                tableQuestData.columns.id.name,
+            ),
+            [QUEST_ID],
+        );
+        if (RESULT.rowCount === null) {
+            throw new HTTPError(
+                HTTP_RESPONSE_STATUS_CODE.serverErrorResponse.internalServerError,
+                "Unknown database query error",
+            );
+        }
+        if (RESULT.rowCount === 0) {
+            throw new HTTPError(HTTP_RESPONSE_STATUS_CODE.clientErrorResponse.notFound);
+        }
 
-			const QUEST: QuestData = RESULT.rows[0];
+        const QUEST_OUTPUT: QuestOutput = new QuestOutput(RESULT.rows[0]);
 
-			if (!Array.isArray(QUEST["question_var"])) {
-				throw new TypeError("Database data type error.");
-			}
-
-			const CONTEXT: IsolatedVM.Context = await ISOLATE.createContext();
-
-			QUEST["question_var"] = await Promise.all(
-				QUEST["question_var"].map(async (el) => {
-					if (el.type === QuestionVariableType.function) {
-						const SCRIPT = await ISOLATE.compileScript(`(${el.content})()`);
-						const RESULT = await SCRIPT.run(CONTEXT);
-						return {
-							type: el.type,
-							sign: el.sign,
-							content: RESULT,
-						};
-					}
-
-					return el;
-				}),
-			);
-
-			res.status(HTTP_RESPONSE_STATUS_CODE.successfulResponse.ok).json(RESULT.rows[0]);
-			return;
-		} finally {
-			ISOLATE.dispose();
-		}
-	}),
+        res.status(HTTP_RESPONSE_STATUS_CODE.successfulResponse.ok).json({
+            message: "操作成功",
+            data: await QUEST_OUTPUT.forQuestion(),
+        });
+        return;
+    }),
 );
+*/
 
 /**
  * 比對題目資料中的答案，並返回結果
  */
 ROUTER.post(
-	"/answerQuest",
-	authenticationTokenValidation(1),
-	asyncRouterErrorHandler(
-		async (
-			req: RequestBody<{
-				questID: string;
-				questionVar: number[];
-				answer: number[];
-			}>,
-			res: Response,
-		) => {
-			/**
-			 * 建立虛擬機
-			 */
-			const ISOLATE: IsolatedVM.Isolate = new IsolatedVM.Isolate({ memoryLimit: 128 });
+    "/answerQuest",
+    accessTokenValidation([Database.schemas.user.tables.userPrivileges.columns.allowAnswerQuest.name]),
+    asyncRouterErrorHandler(
+        async (
+            req: RequestWithAccessToken<
+                RequestBody<{ questID: string; questionVariable: string[]; answerVariable: string[] }>
+            >,
+            res: Response,
+        ) => {
+            const QUEST_ID: string = req.body.questID;
+            const QUESTION_VARIABLE = req.body.questionVariable;
+            const answerVariable = req.body.answerVariable;
 
-			try {
-				/**
-				 * 查詢解答資料
-				 */
-				const { questID, questionVar = [], answer = [] } = req.body;
-				const RESULT: QueryResult = await POOL.query(
-					"SELECT answer FROM test_schema.quest WHERE id = $1",
-					[questID],
-				);
+            const POOL = Database.pool;
+            const schemaQuest = Database.schemas.quest;
+            const tableQuestData = schemaQuest.tables.data;
 
-				if (RESULT.rowCount === 0) {
-					throw new HTTPError(HTTP_RESPONSE_STATUS_CODE.clientErrorResponse.notFound);
-				}
+            const RESULT: QueryResult = await POOL.query(
+                format(
+                    `SELECT %I
+					FROM %I.%I
+					WHERE %I = $1`,
+                    tableQuestData.columns.answer.name,
+                    schemaQuest.name,
+                    tableQuestData.name,
+                    tableQuestData.columns.id.name,
+                ),
+                [QUEST_ID],
+            );
+            if (RESULT.rowCount === null) {
+                throw new HTTPError(
+                    HTTP_RESPONSE_STATUS_CODE.serverErrorResponse.internalServerError,
+                    "Unknown database query error",
+                );
+            }
+            if (RESULT.rowCount === 0) {
+                throw new HTTPError(HTTP_RESPONSE_STATUS_CODE.clientErrorResponse.notFound);
+            }
 
-				let answerList: Answer[] = RESULT.rows[0].answer;
+            const { answer } = RESULT.rows[0];
+            const ANSWER_VARIABLE: string[] = (
+                await Promise.all(
+                    (answer as AnswerVariableAPIObject[]).map((value) =>
+                        new AnswerVariable(value).toConstant(QUESTION_VARIABLE),
+                    ),
+                )
+            ).map((param) => param.value);
 
-				const CONTEXT: IsolatedVM.Context = await ISOLATE.createContext();
-				answerList = await Promise.all(
-					answerList.map(async (el) => {
-						if (el.type === AnswerType.function) {
-							const SCRIPT = await ISOLATE.compileScript(`(${el.content})`);
-							const FN = await SCRIPT.run(CONTEXT);
-							const RESULT = await FN.apply(undefined, questionVar);
-							return RESULT;
-						}
-						if (el.type === AnswerType.text) {
-							return el.content;
-						}
-						return el;
-					}),
-				);
+            if (answerVariable.length !== ANSWER_VARIABLE.length) {
+                res.status(HTTP_RESPONSE_STATUS_CODE.successfulResponse.ok).json({
+                    message: "操作成功",
+                    data: {
+                        correct: false,
+                    },
+                });
+                return;
+            }
 
-				/**
-				 * 比對答案
-				 */
-				const IS_CORRECT: boolean =
-					answerList.length === answer.length &&
-					answerList.every((val, idx) => String(val) === String(answer[idx]));
+            for (let i = 0; i < answerVariable.length; ++i) {
+                if (answerVariable[i] !== ANSWER_VARIABLE[i]) {
+                    res.status(HTTP_RESPONSE_STATUS_CODE.successfulResponse.ok).json({
+                        message: "操作成功",
+                        data: {
+                            correct: false,
+                        },
+                    });
+                    return;
+                }
+            }
 
-				if (IS_CORRECT) {
-					res.status(HTTP_RESPONSE_STATUS_CODE.successfulResponse.ok).json({
-						isCorrect: IS_CORRECT,
-						message: "正確",
-					});
-				} else {
-					res.status(HTTP_RESPONSE_STATUS_CODE.successfulResponse.ok).json({
-						isCorrect: IS_CORRECT,
-						message: "錯誤",
-					});
-				}
-
-				return;
-			} finally {
-				ISOLATE.dispose();
-			}
-		},
-	),
+            res.status(HTTP_RESPONSE_STATUS_CODE.successfulResponse.ok).json({
+                message: "操作成功",
+                data: {
+                    correct: true,
+                },
+            });
+            return;
+        },
+    ),
 );
 
-ROUTER.post(
-	"/newQuest",
-	authenticationTokenValidation(100),
-	asyncRouterErrorHandler(
-		async (
-			req: RequestBody<
-				QuestData & {
-					answer: { type: (typeof AnswerType)[keyof typeof AnswerType]; content: string }[];
-				} & {
-					tags: string[];
-				}
-			>,
-			res: Response,
-		) => {
-			const REQ = req as RequestWithAuthenticationToken<
-				RequestBody<
-					QuestData & {
-						answer: { type: (typeof AnswerType)[keyof typeof AnswerType]; content: string }[];
-					} & {
-						tags: string[];
-					}
-				>
-			>;
-
-			const {
-				code: CODE,
-				title: TITLE,
-				question: QUESTION = [],
-				question_var: QUESTION_VAR = [],
-				answer: ANSWER = [],
-			} = REQ.body;
-			const QUESTION_LIST: Question[] = QUESTION.map((el) => new Question(el.type, el.content));
-			const QUESTION_VAR_LIST: QuestionVariable[] = QUESTION_VAR.map(
-				(el) => new QuestionVariable(el.type, el.sign, el.content),
-			);
-			const ANSWER_LIST: Answer[] = ANSWER.map((el) => new Answer(el.type, el.content));
-
-			if (
-				!(
-					QUESTION_LIST.every((el) => el.type !== QuestionType.undefined) &&
-					QUESTION_VAR_LIST.every((el) => el.type !== QuestionVariableType.undefined) &&
-					ANSWER_LIST.every((el) => el.type !== AnswerType.undefined)
-				)
-			) {
-				throw new HTTPError(HTTP_RESPONSE_STATUS_CODE.clientErrorResponse.badRequest, "Data error.");
-			}
-
-			const RESULT: QueryResult = await POOL.query("SELECT 1 FROM test_schema.quest WHERE code = $1", [
-				CODE,
-			]);
-
-			if (RESULT.rowCount) {
-				throw new HTTPError(
-					HTTP_RESPONSE_STATUS_CODE.clientErrorResponse.badRequest,
-					"Duplicated question number.",
-				);
-			}
-
-			await POOL.query(
-				`INSERT INTO test_schema.quest 
-            (code, title, question, question_var, answer, publisher_id) VALUES
-            ($1, $2, $3, $4, $5, $6)`,
-				[
-					CODE,
-					TITLE,
-					JSON.stringify(QUESTION_LIST),
-					JSON.stringify(QUESTION_VAR_LIST),
-					JSON.stringify(ANSWER_LIST),
-					REQ.authenticationToken.authenticationPayload.userID,
-				],
-			);
-
-			res.sendStatus(HTTP_RESPONSE_STATUS_CODE.successfulResponse.created);
-		},
-	),
-);
-
-ROUTER.get("/", (_req: Request, res: Response) => {
-	res.send("Quest Page.");
-	return;
-});
+export { ROUTER };

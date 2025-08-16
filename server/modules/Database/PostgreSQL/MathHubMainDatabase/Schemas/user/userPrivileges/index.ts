@@ -1,5 +1,5 @@
 import type { Table } from "../../../type.js";
-import { PRIVILEGES } from "../.common/Columns/privileges.js";
+import { PRIVILEGES } from "../common/Columns/privileges.js";
 
 export const USER_PRIVILEGES: Table = {
     name: "userPrivileges",

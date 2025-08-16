@@ -11,7 +11,6 @@ const index_js_1 = require("./config/ServerConfiguration/index.js");
 const AuthenticationRouter_js_1 = require("./router/AuthenticationRouter.js");
 const SecurityRouter_js_1 = require("./router/SecurityRouter.js");
 const AdminRouter_js_1 = require("./router/AdminRouter.js");
-const QuestRouter_js_1 = require("./router/QuestRouter.js");
 const node_process_1 = __importDefault(require("node:process"));
 const node_events_1 = require("node:events");
 const index_js_2 = require("./modules/Database/PostgreSQL/MathHubMainDatabase/index.js");
@@ -62,7 +61,7 @@ let server = null;
     }));
     APP.use("/security", SecurityRouter_js_1.ROUTER);
     APP.use("/auth", AuthenticationRouter_js_1.ROUTER);
-    APP.use("/quest", QuestRouter_js_1.ROUTER);
+    // APP.use("/quest", QuestRouter);
     APP.use("/admin", AdminRouter_js_1.ROUTER);
     APP.get("/", (_req, res) => {
         res.send("MathHub API is running...");

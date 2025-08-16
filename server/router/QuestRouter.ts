@@ -6,7 +6,7 @@ import type { RequestBody, RequestQuery, RequestWithAccessToken } from "../modul
 import { asyncRouterErrorHandler } from "../handler/AsyncRouterErrorHandler.js";
 import format from "pg-format";
 import { QuestInput, type APIObject as QuestInputAPIObject } from "../modules/Quest/QuestInput.js";
-import { QuestOutput } from "../modules/Quest/QuestOutput.js";
+// import { QuestOutput } from "../modules/Quest/QuestOutput.js";
 import {
     AnswerVariable,
     type APIObject as AnswerVariableAPIObject,

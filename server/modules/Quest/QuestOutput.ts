@@ -1,3 +1,4 @@
+/*
 import { QuestInput, type APIObject as QuestInputAPIObject } from "./QuestInput.js";
 
 export type APIObject = {
@@ -78,3 +79,4 @@ export class QuestOutput extends QuestInput {
         };
     }
 }
+*/

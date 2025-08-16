@@ -1,5 +1,5 @@
 import type { Table } from "../../../type.js";
-import { PRIVILEGES } from "../.common/Columns/privileges.js";
+import { PRIVILEGES } from "../common/Columns/privileges.js";
 import { DEFAULTS } from "./defaults.js";
 
 export const GROUP_PRIVILEGES: Table = {

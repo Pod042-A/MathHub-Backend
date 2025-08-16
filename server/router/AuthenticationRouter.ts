@@ -24,7 +24,7 @@ import type { OAuth2Client } from "googleapis-common";
 import { Database } from "../modules/Database/PostgreSQL/MathHubMainDatabase/index.js";
 import { Time } from "../modules/Time/Time.js";
 import { Redis } from "../modules/Database/Redis/index.js";
-import { PRIVILEGES } from "../modules/Database/PostgreSQL/MathHubMainDatabase/Schemas/user/.common/Columns/privileges.js";
+import { PRIVILEGES } from "../modules/Database/PostgreSQL/MathHubMainDatabase/Schemas/user/common/Columns/privileges.js";
 import { googleOAuthURLParser } from "../middleware/GoogleOAuthURLParser.js";
 import { csrfTokenValidation } from "../middleware/CSRFTokenValidation.js";
 import { URLSearchParams } from "node:url";

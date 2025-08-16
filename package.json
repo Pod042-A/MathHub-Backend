@@ -6,7 +6,7 @@
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
         "start": "node ./build/server.js",
-        "compile": "npx tsc",
+        "build": "npx tsc",
         "watch": "npx tsc --watch",
         "format:check": "npx biome check server",
         "lint": "biome lint",

@@ -1,5 +1,5 @@
 import type { Defaults } from "../../../type.js";
-import { PRIVILEGES } from "../.common/Columns/privileges.js";
+import { PRIVILEGES } from "../common/Columns/privileges.js";
 
 export const DEFAULTS: Defaults = [
     [

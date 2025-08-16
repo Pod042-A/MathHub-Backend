@@ -39,7 +39,11 @@ let server: Server | null = null;
     });
 
     const APP: Express = express();
-    APP.use(cors());
+    APP.use(
+        cors({
+            credentials: true,
+        }),
+    );
     APP.use(express.json());
     APP.use(cookieParser(SECRET));
     APP.use(
@@ -74,7 +78,7 @@ let server: Server | null = null;
     );
     APP.use("/security", SecurityRouter);
     APP.use("/auth", AuthenticationRouter);
-    APP.use("/quest", QuestRouter);
+    // APP.use("/quest", QuestRouter);
     APP.use("/admin", AdminRouter);
 
     APP.get("/", (_req: Request, res: Response) => {
